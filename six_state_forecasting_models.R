@@ -65,7 +65,7 @@ t_cotton   <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="COT
 t_sorghum  <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="SORGHUM"),])
   t_sorghum_price <- read.csv("data/sorghum_crop_yields_us.csv")
     t_sorghum <- cbind(t_sorghum,
-                       price=t_sorghum_price$Price[match(t_sorghum$year,t_sorghum_price$Year),],
+                       price=t_sorghum_price$Price[match(t_sorghum$year,t_sorghum_price$Year)],
                        parsePDSIByYear(t_drought, year=t_sorghum$year))
 
 # build our raw "area harvested" models for the six states of the GP
@@ -74,17 +74,20 @@ summary(m_corn_current <- glm(area~.,data=t_corn))
 summary(m_cotton_current <- glm(area~.,data=t_cotton))
 summary(m_sorghum_current <- glm(area~.,data=t_sorghum))
 
+# let's ensure consistent lowercase lettering in column names across all tables
+for(ts in ls(pattern="t_.*price$")){ n<-tolower(names(get(ts))); t <- get(ts); names(t) <- n; assign(ts,value=t) }
+
 # make some yield correction models so we can downscale our future yield projection variables for
 # each commodity crop for the US to match our six states.  These glm's should also be able to indicate 
 # how appropriate that is.
 
-t_wheat_yield <- data.frame(six_states_yield=t_wheat$yield,us_yield=t_wheat_price$Yield, year=t_wheat_price$Year)
+t_wheat_yield <- data.frame(six_states_yield=t_wheat$yield,us_yield=t_wheat_price$yield, year=t_wheat_price$year)
   m_wheat_yield_from_us <- glm(six_states_yield~.,data=t_wheat_yield)
-t_corn_yield <- data.frame(six_states_yield=t_corn$yield,us_yield=t_corn_price$Yield, year=t_corn_price$Year)
+t_corn_yield <- data.frame(six_states_yield=t_corn$yield,us_yield=t_corn_price$yield, year=t_corn_price$year)
   m_corn_yield_from_us <- glm(six_states_yield~.,data=t_corn_yield)
-t_cotton_yield <- data.frame(six_states_yield=t_cotton$yield,us_yield=t_cotton_price$Yield, year=t_cotton_price$Year)
+t_cotton_yield <- data.frame(six_states_yield=t_cotton$yield,us_yield=t_cotton_price$yield, year=t_cotton_price$year)
   m_cotton_yield_from_us  <- glm(six_states_yield ~ .,data=t_cotton_yield)
-t_sorghum_yield <- data.frame(six_states_yield=t_sorghum$yield,us_yield=t_sorghum_price$Yield, year=t_sorghum_price$Year)
+t_sorghum_yield <- data.frame(six_states_yield=t_sorghum$yield,us_yield=t_sorghum_price$yield, year=t_sorghum_price$year)
   m_sorghum_yield_from_us <- glm(six_states_yield ~ .,data=t_sorghum_yield)
 
 # generate corrected yield forecasts for each commodity crop using the correction factors fit above (Data from: USDA Long-term Projections, February 2015)
