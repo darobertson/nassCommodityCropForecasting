@@ -81,13 +81,21 @@ for(ts in ls(pattern="t_.*price$")){ n<-tolower(names(get(ts))); t <- get(ts); n
 # each commodity crop for the US to match our six states.  These glm's should also be able to indicate 
 # how appropriate that is.
 
-t_wheat_yield <- data.frame(six_states_yield=t_wheat$yield,us_yield=t_wheat_price$yield, year=t_wheat_price$year)
+t_wheat_yield <- data.frame(six_states_yield=t_wheat$yield[match(t_wheat$year,t_wheat_price$year)],
+                            us_yield=t_wheat_price$yield[match(t_wheat$year,t_wheat_price$year)], 
+                            year=t_wheat_price$year[match(t_wheat$year,t_wheat_price$year)])
   m_wheat_yield_from_us <- glm(six_states_yield~.,data=t_wheat_yield)
-t_corn_yield <- data.frame(six_states_yield=t_corn$yield,us_yield=t_corn_price$yield, year=t_corn_price$year)
+t_corn_yield <- data.frame(six_states_yield=t_corn$yield[match(t_corn$year,t_corn_price$year)],
+                           us_yield=t_corn_price$yield[match(t_corn$year,t_corn_price$year)], 
+                           year=t_corn_price$year[match(t_corn$year,t_corn_price$year)])
   m_corn_yield_from_us <- glm(six_states_yield~.,data=t_corn_yield)
-t_cotton_yield <- data.frame(six_states_yield=t_cotton$yield,us_yield=t_cotton_price$yield, year=t_cotton_price$year)
+t_cotton_yield <- data.frame(six_states_yield=t_cotton$yield[match(t_cotton$year,t_cotton_price$year)],
+                             us_yield=t_cotton_price$yield[match(t_cotton$year,t_cotton_price$year)], 
+                             year=t_cotton_price$year[match(t_cotton$year,t_cotton_price$year)])
   m_cotton_yield_from_us  <- glm(six_states_yield ~ .,data=t_cotton_yield)
-t_sorghum_yield <- data.frame(six_states_yield=t_sorghum$yield,us_yield=t_sorghum_price$yield, year=t_sorghum_price$year)
+t_sorghum_yield <- data.frame(six_states_yield=t_sorghum$yield[match(t_sorghum$year,t_sorghum_price$year)],
+                              us_yield=t_sorghum_price$yield[match(t_sorghum$year,t_sorghum_price$year)], 
+                              year=t_sorghum_price$year[match(t_sorghum$year,t_sorghum_price$year)])
   m_sorghum_yield_from_us <- glm(six_states_yield ~ .,data=t_sorghum_yield)
 
 # generate corrected yield forecasts for each commodity crop using the correction factors fit above (Data from: USDA Long-term Projections, February 2015)
@@ -98,13 +106,13 @@ corn_bu_acre     <- data.frame(us_yield=c(158.8,173.4,167.2,169.2,171.2,173.2,17
 cotton_lbs_acre  <- data.frame(us_yield=c(802,783,800,805,810,815,820,825,830,835,840,845),year=2014:2025)
   cotton_lbs_acre <- as.vector(predict(m_cotton_yield_from_us,newdata=cotton_lbs_acre))
 sorghum_bu_acre  <- data.frame(us_yield=c(69.6,66.1,65.0,65.0,65.0,65.0,65.0,65.0,65.0,65.0,65.0,65.0),year=2014:2025)
-sorghum_bu_acre  <- as.vector(predict(m_sorghum_yield_from_us,newdata=sorghum_bu_acre))
+  sorghum_bu_acre  <- as.vector(predict(m_sorghum_yield_from_us,newdata=sorghum_bu_acre))
 
-# generate future commodity price projections for each crop (Data from: WorldBank Projections, April 2015)
+# future commodity price projections for each crop (Data from: WorldBank Projections, April 2015)
 corn_price_future    <- data.frame(price=c(192.9,180.0,183.6,187.4,191.2,195.0,199.0,203.0,207.1,211.3,215.6,220.0),year=2014:2025)
 cotton_price_future  <- data.frame(price=c(1.83,1.60,1.65,1.71,1.76,1.82,1.88,1.94,2.00,2.06,2.13,2.20),year=2014:2025)
 wheat_price_future   <- data.frame(price=c(284.9,240.0,243.3,246.6,250.0,253.4,256.9,260.4,264.0,267.6,271.3,275.0),year=2014:2025)
-sorghum_price_future <- NA
+sorghum_price_future <- data.frame(price=c(4.28,3.45,3.30,3.40,3.40,3.40,3.45,3.45,3.50,3.55,3.60,3.65), year=2014:2025) # from USDA Long-term projections
 
 # construct a table of future conditions from the above yield corrections and commodity price data forecasts to come up with future predictions of 
 # total area harvested
@@ -121,6 +129,8 @@ t_wheat_future <- cbind(yield=wheat_bu_acre,wheat_price_future,pdsi=t_pdsi_futur
   t_wheat_future <- predict(m_wheat_current,newdata=t_wheat_future)
 t_cotton_future <- cbind(yield=cotton_lbs_acre,cotton_price_future,pdsi=t_pdsi_future)
   t_cotton_future <- predict(m_cotton_current,newdata=t_cotton_future)
+t_sorghum_future <- cbind(yield=sorghum_bu_acre,sorghum_price_future,pdsi=t_pdsi_future)
+  t_sorghum_future <- predict(m_sorghum_current,newdata=t_sorghum_future)
   
 ratioToPilot <- (147327927594)/(1867211959388) # ratio of the pilot project area to the six states tallied for NASS statistics representing the GP
 
@@ -129,15 +139,15 @@ ratioToPilot <- (147327927594)/(1867211959388) # ratio of the pilot project area
 # make some plots
 #
 
-par(mfrow=c(3,1))
+par(mfrow=c(4,2))
 
 # corn
 plot(t_corn$area*ratioToPilot,type="l",x=1960:2014,xlab=NA, ylab=NA, lwd=1.8,col="white",yaxt="n")
 grid();grid();grid()
 abline(h=mean(t_corn$area*ratioToPilot),col="orange",lwd=0.8)
 lines(t_corn$area*ratioToPilot,x=1960:2014,xlab=NA, ylab=NA, lwd=1.8,cex=1.3)
-lines(predict(m_corn, newdata=t_corn)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
-points(predict(m_corn, newdata=t_corn)*ratioToPilot,x=1960:2014,col="red")
+lines(predict(m_corn_current, newdata=t_corn)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
+points(predict(m_corn_current, newdata=t_corn)*ratioToPilot,x=1960:2014,col="red")
 text(y=(max(t_corn$area*ratioToPilot)*0.96),x=1960, "A",cex=1.5)
 
 # cotton
@@ -145,8 +155,8 @@ plot(t_cotton$area*ratioToPilot,type="l",x=1960:2014,xlab=NA, ylab="Area Planted
 grid();grid();grid()
 abline(h=mean(t_cotton$area*ratioToPilot),col="orange",lwd=0.8)
 lines(t_cotton$area*ratioToPilot,type="l",x=1960:2014,xlab=NA, ylab="Area Planted (GPLCC Pilot Region [Acres])", lwd=1.8, cex.lab=1.5)
-lines(predict(m_cotton, newdata=t_cotton)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
-points(predict(m_cotton, newdata=t_cotton)*ratioToPilot,x=1960:2014,col="red")
+lines(predict(m_cotton_current, newdata=t_cotton)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
+points(predict(m_cotton_current, newdata=t_cotton)*ratioToPilot,x=1960:2014,col="red")
 text(y=(max(t_cotton$area*ratioToPilot)*0.96),x=1960, "B",cex=1.5)
 
 # wheat
@@ -154,9 +164,18 @@ plot(t_wheat$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price 
 grid();grid();grid()
 abline(h=mean(t_wheat$area*ratioToPilot),col="orange",lwd=0.8)
 lines(t_wheat$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price + PDSI + Yield)", ylab=NA, lwd=1.8, cex.lab=1.5)
-lines(predict(m_wheat, newdata=t_wheat)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
-points(predict(m_wheat, newdata=t_wheat)*ratioToPilot,x=1960:2014,col="red")
+lines(predict(m_wheat_current, newdata=t_wheat)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
+points(predict(m_wheat_current, newdata=t_wheat)*ratioToPilot,x=1960:2014,col="red")
 text(y=(max(t_wheat$area*ratioToPilot)*0.96),x=1960, "C",cex=1.5)
+
+# sorghum
+plot(t_sorghum$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price + PDSI + Yield)", ylab=NA, lwd=1.8, cex.lab=1.5,col="white")
+grid();grid();grid()
+abline(h=mean(t_sorghum$area*ratioToPilot),col="orange",lwd=0.8)
+lines(t_sorghum$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price + PDSI + Yield)", ylab=NA, lwd=1.8, cex.lab=1.5)
+lines(predict(m_sorghum_current, newdata=t_sorghum)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
+points(predict(m_sorghum_current, newdata=t_sorghum)*ratioToPilot,x=1960:2014,col="red")
+text(y=(max(t_sorghum$area*ratioToPilot)*0.96),x=1960, "D",cex=1.5)
 
 # do future projections of commodity crops
   # correct national yields -> six states yields
