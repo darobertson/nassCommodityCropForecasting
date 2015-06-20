@@ -40,7 +40,9 @@ parsePDSIByYear <- function(x,year=NULL,fun=mean){
 
 HOME <- Sys.getenv("HOME")
 
-# parse full historical tables for our individual commodity crops
+# parse full historical tables for our individual commodity crops.  Units here are tallied so they are consistent with the 6 states that make up the Great Plains.
+# We will project these forward to 2025 then scale the projected areas for each crop to the extent of the GPLCC pilot region as we work our way through the data.
+
 t         <- read.csv("data/NASS_Historical_Yield_Area_Corn_Cotton_Wheat_Sorghum_Six_States.csv")
 t_drought <- read.csv("data/NNDC_Drought_and_Climate_Central_US.csv") # Historical drought data compiled from Cook et al. and NOAA
 
@@ -79,7 +81,7 @@ for(ts in ls(pattern="t_.*price$")){ n<-tolower(names(get(ts))); t <- get(ts); n
 
 # make some yield correction models so we can downscale our future yield projection variables for
 # each commodity crop for the US to match our six states.  These glm's should also be able to indicate 
-# how appropriate that is.
+# how appropriate it is to do this kind of correction.
 
 t_wheat_yield <- data.frame(six_states_yield=t_wheat$yield[match(t_wheat$year,t_wheat_price$year)],
                             us_yield=t_wheat_price$yield[match(t_wheat$year,t_wheat_price$year)], 
@@ -92,7 +94,7 @@ t_corn_yield <- data.frame(six_states_yield=t_corn$yield[match(t_corn$year,t_cor
 t_cotton_yield <- data.frame(six_states_yield=t_cotton$yield[match(t_cotton$year,t_cotton_price$year)],
                              us_yield=t_cotton_price$yield[match(t_cotton$year,t_cotton_price$year)], 
                              year=t_cotton_price$year[match(t_cotton$year,t_cotton_price$year)])
-  m_cotton_yield_from_us  <- glm(six_states_yield ~ .,data=t_cotton_yield)
+  q  <- glm(six_states_yield ~ .,data=t_cotton_yield)
 t_sorghum_yield <- data.frame(six_states_yield=t_sorghum$yield[match(t_sorghum$year,t_sorghum_price$year)],
                               us_yield=t_sorghum_price$yield[match(t_sorghum$year,t_sorghum_price$year)], 
                               year=t_sorghum_price$year[match(t_sorghum$year,t_sorghum_price$year)])
@@ -114,69 +116,136 @@ cotton_price_future  <- data.frame(price=c(1.83,1.60,1.65,1.71,1.76,1.82,1.88,1.
 wheat_price_future   <- data.frame(price=c(284.9,240.0,243.3,246.6,250.0,253.4,256.9,260.4,264.0,267.6,271.3,275.0),year=2014:2025)
 sorghum_price_future <- data.frame(price=c(4.28,3.45,3.30,3.40,3.40,3.40,3.45,3.45,3.50,3.55,3.60,3.65), year=2014:2025) # from USDA Long-term projections
 
-# construct a table of future conditions from the above yield corrections and commodity price data forecasts to come up with future predictions of 
-# total area harvested
+# construct a table of future drought conditions from the above yield corrections and commodity price data forecasts to forecast future predictions of 
+# total area harvested.  The future PDSI trend here is represented as trend surface fit to an interpolated smoothing spline.
 
 t_pdsi_future <- read.csv("data/Cook_et_al_pdsi_projections_2100.csv") # time-series starts at 2014.  Lets interpolate and smooth this projection and treat it as a trend surface
   t_pdsi_future <- spline(t_pdsi_future$pdsi)
     t_pdsi_future$x <- t_pdsi_future$x+2014
       m_pdsi_future <- lm(y~x,data.frame(y=t_pdsi_future$y,x=t_pdsi_future$x))     
         t_pdsi_future <- as.vector(predict(m_pdsi_future,newdata=data.frame(x=2014:2025)))
+
+# predict the total area harvested for the GPLCC pilot region, using commodity prices, time, yield, and drought conditions
   
+ratioToPilot <- (147327927594)/(1867211959388) # meters/meters ratio of the pilot project area to the six states tallied for NASS statistics representing the GP
+
 t_corn_future <- cbind(yield=corn_bu_acre,corn_price_future,pdsi=t_pdsi_future)
-  t_corn_future <- predict(m_corn_current,newdata=t_corn_future)
+  t_m <- predict(m_corn_current,newdata=t_corn_future,se.fit=T)
+    t_m$fit <- t_m$fit*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*ratioToPilot
+  upr <- t_m$fit + (1.96 * t_m$se.fit)
+  lwr <- t_m$fit - (1.96 * t_m$se.fit)
+  fit <- t_m$fit
+    t_corn_future <- data.frame(area=fit,upper=upr,lower=lwr,year=2014:2025)
+
 t_wheat_future <- cbind(yield=wheat_bu_acre,wheat_price_future,pdsi=t_pdsi_future)
-  t_wheat_future <- predict(m_wheat_current,newdata=t_wheat_future)
+  t_m <- predict(m_wheat_current,newdata=t_wheat_future,se.fit=T)
+    t_m$fit <- t_m$fit*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*ratioToPilot
+  upr <- t_m$fit + (1.96 * t_m$se.fit)
+  lwr <- t_m$fit - (1.96 * t_m$se.fit)
+  fit <- t_m$fit
+    t_wheat_future <- data.frame(area=fit,upper=upr,lower=lwr,year=2014:2025)
+
 t_cotton_future <- cbind(yield=cotton_lbs_acre,cotton_price_future,pdsi=t_pdsi_future)
-  t_cotton_future <- predict(m_cotton_current,newdata=t_cotton_future)
+  t_m <- predict(m_cotton_current,newdata=t_cotton_future,se.fit=T)
+    t_m$fit <- t_m$fit*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*ratioToPilot
+  upr <- t_m$fit + (1.96 * t_m$se.fit)
+  lwr <- t_m$fit - (1.96 * t_m$se.fit)
+  fit <- t_m$fit
+    t_cotton_future <- data.frame(area=fit,upper=upr,lower=lwr,year=2014:2025)
+
 t_sorghum_future <- cbind(yield=sorghum_bu_acre,sorghum_price_future,pdsi=t_pdsi_future)
-  t_sorghum_future <- predict(m_sorghum_current,newdata=t_sorghum_future)
+  t_m <- predict(m_sorghum_current,newdata=t_sorghum_future,se.fit=T)
+    t_m$fit <- t_m$fit*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*ratioToPilot
+  upr <- t_m$fit + (1.96 * t_m$se.fit)
+  lwr <- t_m$fit - (1.96 * t_m$se.fit)
+  fit <- t_m$fit
+    t_sorghum_future <- data.frame(area=fit,upper=upr,lower=lwr,year=2014:2025)
   
-ratioToPilot <- (147327927594)/(1867211959388) # ratio of the pilot project area to the six states tallied for NASS statistics representing the GP
+# convert our area units from acres -> kilometers^2 -- for scale, the total area of the GPLCC pilot region in km2 is 147327.9
+for(ts in ls(pattern="t_.*future$")){ 
+  if(sum(grepl(names(get(ts)),pattern="rea"))>0){ 
+    t <- get(ts); 
+    t[,!grepl(names(t),pattern="year")] <- t[,!grepl(names(t),pattern="year")] * 0.0040468564224
+    assign(ts,value=t) 
+  }
+}
 
+# total percentage of pilot region forecasted for agricultural activity for focal crops
+(t_sorghum_future[,1]+t_cotton_future[,1]+t_wheat_future[,1]+t_corn_future[,1])/147327.9
 
 #
-# make some plots
+# make some plots of historical (training) data vs. model predictions to demonstrate residual error
 #
 
-par(mfrow=c(4,2))
+require(reshape2)
+require(ggplot2)
+require(gridExtra)
 
-# corn
-plot(t_corn$area*ratioToPilot,type="l",x=1960:2014,xlab=NA, ylab=NA, lwd=1.8,col="white",yaxt="n")
-grid();grid();grid()
-abline(h=mean(t_corn$area*ratioToPilot),col="orange",lwd=0.8)
-lines(t_corn$area*ratioToPilot,x=1960:2014,xlab=NA, ylab=NA, lwd=1.8,cex=1.3)
-lines(predict(m_corn_current, newdata=t_corn)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
-points(predict(m_corn_current, newdata=t_corn)*ratioToPilot,x=1960:2014,col="red")
-text(y=(max(t_corn$area*ratioToPilot)*0.96),x=1960, "A",cex=1.5)
+# indicate : Year (Commodity Price + PDSI + Yield) in figure caption
+t_corn_plot <- data.frame(observed=t_corn$area*ratioToPilot,
+                          predicted=predict(m_corn_current, newdata=t_corn)*ratioToPilot,
+                          year=1960:2014)
+p1 <- ggplot(t_corn_plot) + 
+      geom_line(aes(y=observed, x=year), colour="black") + 
+      geom_point(aes(y=observed, x=year), colour="black") + 
+      geom_line(aes(y=predicted, x=year), colour="orange") + 
+      geom_point(aes(y=predicted, x=year), colour="orange") +      
+      scale_x_continuous(breaks = round(seq(min(t_corn_plot$year,na.rm=T), max(t_corn_plot$year,na.rm=T), by = 4),1)) + 
+      xlab("") + ylab("Area Planted") +
+      annotate("text", y=max(t_corn_plot$observed,na.rm=T), x=min(t_corn_plot$year,na.rm=T)*1.0011, label = "A.) Corn", size=4) +
+      geom_abline(intercept = mean(t_corn$area*ratioToPilot), slope = 1, colour="red") +
+      theme_bw();
 
-# cotton
-plot(t_cotton$area*ratioToPilot,type="l",x=1960:2014,xlab=NA, ylab="Area Planted (GPLCC Pilot Region [Acres])", lwd=1.8, cex.lab=1.5,col="white")
-grid();grid();grid()
-abline(h=mean(t_cotton$area*ratioToPilot),col="orange",lwd=0.8)
-lines(t_cotton$area*ratioToPilot,type="l",x=1960:2014,xlab=NA, ylab="Area Planted (GPLCC Pilot Region [Acres])", lwd=1.8, cex.lab=1.5)
-lines(predict(m_cotton_current, newdata=t_cotton)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
-points(predict(m_cotton_current, newdata=t_cotton)*ratioToPilot,x=1960:2014,col="red")
-text(y=(max(t_cotton$area*ratioToPilot)*0.96),x=1960, "B",cex=1.5)
+t_cotton_plot <- data.frame(observed=t_cotton$area*ratioToPilot,
+                          predicted=predict(m_cotton_current, newdata=t_cotton)*ratioToPilot,
+                          year=1960:2014)
+p2 <- ggplot(t_cotton_plot) + 
+      geom_line(aes(y=observed, x=year), colour="black") + 
+      geom_point(aes(y=observed, x=year), colour="black") + 
+      geom_line(aes(y=predicted, x=year), colour="orange") + 
+      geom_point(aes(y=predicted, x=year), colour="orange") +      
+      xlab("") + ylab("Area Planted") +
+      annotate("text", y=max(t_cotton_plot$observed,na.rm=T), x=max(t_cotton_plot$year,na.rm=T)*0.9982, label = "B.) Cotton", size=4) +
+      geom_abline(intercept = mean(t_cotton$area*ratioToPilot), slope = 1, colour="red") +
+      theme_bw();
 
-# wheat
-plot(t_wheat$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price + PDSI + Yield)", ylab=NA, lwd=1.8, cex.lab=1.5,col="white")
-grid();grid();grid()
-abline(h=mean(t_wheat$area*ratioToPilot),col="orange",lwd=0.8)
-lines(t_wheat$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price + PDSI + Yield)", ylab=NA, lwd=1.8, cex.lab=1.5)
-lines(predict(m_wheat_current, newdata=t_wheat)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
-points(predict(m_wheat_current, newdata=t_wheat)*ratioToPilot,x=1960:2014,col="red")
-text(y=(max(t_wheat$area*ratioToPilot)*0.96),x=1960, "C",cex=1.5)
+t_wheat_plot <- data.frame(observed=t_wheat$area*ratioToPilot,
+                          predicted=predict(m_wheat_current, newdata=t_wheat)*ratioToPilot,
+                          year=1960:2014)
+p3 <- ggplot(t_wheat_plot) + 
+      geom_line(aes(y=observed, x=year), colour="black") + 
+      geom_point(aes(y=observed, x=year), colour="black") + 
+      geom_line(aes(y=predicted, x=year), colour="orange") + 
+      geom_point(aes(y=predicted, x=year), colour="orange") +      
+      xlab("") + ylab("Area Planted") +
+      annotate("text", y=max(t_wheat_plot$observed,na.rm=T), x=min(t_wheat_plot$year,na.rm=T)*1.0014, label = "C.) Wheat", size=4) +
+      geom_abline(intercept = mean(t_wheat$area*ratioToPilot), slope = 1, colour="red") +
+      theme_bw();
 
-# sorghum
-plot(t_sorghum$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price + PDSI + Yield)", ylab=NA, lwd=1.8, cex.lab=1.5,col="white")
-grid();grid();grid()
-abline(h=mean(t_sorghum$area*ratioToPilot),col="orange",lwd=0.8)
-lines(t_sorghum$area*ratioToPilot,type="l",x=1960:2014,xlab="Year (Commodity Price + PDSI + Yield)", ylab=NA, lwd=1.8, cex.lab=1.5)
-lines(predict(m_sorghum_current, newdata=t_sorghum)*ratioToPilot, x=1960:2014,lwd=1.5,col="orange")
-points(predict(m_sorghum_current, newdata=t_sorghum)*ratioToPilot,x=1960:2014,col="red")
-text(y=(max(t_sorghum$area*ratioToPilot)*0.96),x=1960, "D",cex=1.5)
+t_sorghum_plot <- data.frame(observed=t_sorghum$area*ratioToPilot,
+                          predicted=predict(m_sorghum_current, newdata=t_wheat)*ratioToPilot,
+                          year=1960:2014)
+p4 <- ggplot(t_sorghum_plot) + 
+      geom_line(aes(y=observed, x=year), colour="black") + 
+      geom_point(aes(y=observed, x=year), colour="black") + 
+      geom_line(aes(y=predicted, x=year), colour="orange") + 
+      geom_point(aes(y=predicted, x=year), colour="orange") +      
+      xlab("") + ylab("Area Planted") +
+      annotate("text", y=max(t_sorghum_plot$observed,na.rm=T), x=max(t_sorghum_plot$year,na.rm=T)*0.9980, label = "D.) Sorghum", size=4) +
+      geom_abline(intercept = mean(t_sorghum$area*ratioToPilot), slope = 1, colour="red") +
+      theme_bw();
 
-# do future projections of commodity crops
-  # correct national yields -> six states yields
+grid.arrange(p1,p2,p3,p4)
+
+# make barplots of forecasts for 2015, 2020, 2025, with p=0.95 intervals for each crop
+
+p1 <- ggplot()
+
+
+
+
 
