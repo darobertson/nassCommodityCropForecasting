@@ -38,34 +38,34 @@ parsePDSIByYear <- function(x,year=NULL,fun=mean){
 # MAIN
 # 
 
-setwd("/home/ktaylora/PLJV/NASS/commodity_crop_forecasting/")
+HOME <- Sys.getenv("HOME")
 
 # parse full historical tables for our individual commodity crops
 t         <- read.csv("data/NASS_Historical_Yield_Area_Corn_Cotton_Wheat_Sorghum_Six_States.csv")
-t_drought <- read.csv("data/NNDC_Drought_and_Climate_Central_US.csv") # historical drought data
+t_drought <- read.csv("data/NNDC_Drought_and_Climate_Central_US.csv") # Historical drought data compiled from Cook et al. and NOAA
 
-t_wheat    <- parseStatesByYear(t[grepl(as.vector(t$Data.Item),pattern="WHEAT"),])
+t_wheat    <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="WHEAT"),])
   t_wheat_price <- read.csv("data/wheat_crop_yields_us.csv")
     t_wheat <- cbind(t_wheat,
                      price=t_wheat_price$Price[match(t_wheat$year,t_wheat_price$Year)],
                      parsePDSIByYear(t_drought, year=t_wheat$year))
     
-t_corn     <- parseStatesByYear(t[grepl(as.vector(t$Data.Item),pattern="CORN"),])
+t_corn     <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="CORN"),])
   t_corn_price <- read.csv("data/corn_crop_yields_us.csv")
     t_corn <- cbind(t_corn,
                     price=t_corn_price$Price[match(t_corn$year,t_corn_price$Year)],
                     parsePDSIByYear(t_drought, year=t_corn$year))
     
-t_cotton   <- parseStatesByYear(t[grepl(as.vector(t$Data.Item),pattern="COTTON"),])
+t_cotton   <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="COTTON"),])
   t_cotton_price <- read.csv("data/cotton_crop_yields_us.csv")
     t_cotton <- cbind(t_cotton,
-                      price=t_cotton_price$Price,
+                      price=t_cotton_price$Price[match(t_cotton$year,t_corn_price$Year)],
                       parsePDSIByYear(t_drought, year=t_cotton$year))
     
-t_sorghum  <- parseStatesByYear(t[grepl(as.vector(t$Data.Item),pattern="SORGHUM"),])
+t_sorghum  <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="SORGHUM"),])
   t_sorghum_price <- read.csv("data/sorghum_crop_yields_us.csv")
     t_sorghum <- cbind(t_sorghum,
-                       price=t_sorghum_price$Price,
+                       price=t_sorghum_price$Price[match(t_sorghum$year,t_sorghum_price$Year),],
                        parsePDSIByYear(t_drought, year=t_sorghum$year))
 
 # build our raw "area harvested" models for the six states of the GP
