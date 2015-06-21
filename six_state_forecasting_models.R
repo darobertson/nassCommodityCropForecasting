@@ -1,9 +1,22 @@
 #
-# Model Format: 
-# area planted = f(year,yield,price,pdsi)
-# yield under future conditions is only provided by NASS at the scale of the continental US.  We correct the difference between the US and the six states of the GP using
-# a simple regression of historical data of yield in the six states vs. yield in the US from 1960-2014.
+# NASS COMMODITY CROP PROJECTIONS FOR DRYLAND AGRICULTURAL PLANTS IN THE SOUTHERN GREAT PLAINS
 #
+# These regression models utilize long-term historical USDA survey data collected from the six states that make up the Southern Great Plains (New Mexico,
+# Texas, Oklahoma, Colorado, Kansas, and Nebraska) and forecast changes in total area planted for major crops.  Total area harvested is treated as a function
+# of annual international commodity price, prevailing drought conditions, annual yield, and an assumption of long-term productivity trends for each crop
+#
+# Author: Kyle Taylor (kyle.taylor@pljv.org)
+# 
+# Model Format: 
+# observed area planted = f(year,yield,price,pdsi)
+# future area planted = f(year,yield(trend),price(forecast),pdsi(trend,forecast))
+#
+# yield under future conditions is only provided by NASS at the scale of the continental US.  We correct the difference between the US and the six states of the GP using
+# a simple regression of historical data of yield in the six states vs. yield in the US from 1960-2014.  Projections of total area harvested for each commodity crop 
+# are then normalized (post-hoc) to the extent of the GPLCC pilot region using 30m gridded total area observations for each crop taken from NASS. 
+#
+
+## Local function
 
 #
 # parseStateYieldsByYear()
@@ -34,9 +47,7 @@ parsePDSIByYear <- function(x,year=NULL,fun=mean){
   return(data.frame(pdsi=pdsis))
 }
 
-#
-# MAIN
-# 
+## MAIN
 
 HOME <- Sys.getenv("HOME")
 
@@ -168,38 +179,31 @@ t_sorghum_future <- cbind(yield=sorghum_bu_acre,sorghum_price_future,pdsi=t_pdsi
     t_sorghum_future <- data.frame(area=fit,upper=upr,lower=lwr,year=2014:2025)
   
 ##
-## overall area conversion process : predicted/observed area [Acres] * (Acres/Km2) * (GPLCC Mean Crop Area Observed Historical / GPLCC Mean Crop Area Predicted)
-## we normalize the NASS observations between 30m resolution grid cells in the GPLCC region for each commodity crop and the total area predicted from 
-## course-grain county-level predictions.
+## The overall area conversion process works as such : predicted/observed area [Acres] * (Acres/Km2) * (GPLCC Mean Crop Area Observed Historical / GPLCC Mean Crop Area Predicted)
+## In effect, we normalize the NASS observations between the mean yearly % area of each commodity crop using 30m resolution grid cells in NASS data to the total area predicted from 
+## course-grain county-level NASS predictions. 
 ##
-
-# first, convert our area units from acres -> kilometers^2 -- for scale, the total area of the GPLCC pilot region in km2 is 147327.9
-# for(ts in ls(pattern="t_.*future$")){ 
-#   if(sum(grepl(names(get(ts)),pattern="rea"))>0){ 
-#     t <- get(ts); 
-#     t[,!grepl(names(t),pattern="year")] <- t[,!grepl(names(t),pattern="year")] * acresToKm
-#     assign(ts,value=t) 
-#   }
-# }
 
 # total percentage of pilot region forecasted for agricultural activity for focal crops
 cat(" -- total area of GPLCC pilot region dedicated to agricultural development (pre-normalization):",round((t_sorghum_future[,1]+t_cotton_future[,1]+t_wheat_future[,1]+t_corn_future[,1])/147327.9,3),"\n")
 
-# NASS scaling factors -- this ratio scaling is an adjustment of total area derived from NASS CDL remote sensing data from 2008-2013
+# NASS scaling factors -- this ratio scaling is an adjustment of total area derived from NASS CDL remote sensing data from 2008-2013 (see: summaryStatisticsForNASS.R)
 nass_wheatNormalizationRatio   <- (0.1259009/mean(t_wheat_future[,1]/147327.9)) # ratio: mean nass total area wheat GPLCC region [2008-2013] / calculated mean GPLCC region area ratio
 nass_cornNormalizationRatio    <- (0.03355856/mean(t_corn_future[,1]/147327.9))
 nass_cottonNormalizationRatio  <- (0.1231231/mean(t_cotton_future[,1]/147327.9))
 nass_sorghumNormalizationRatio <- (0.01291291/mean(t_sorghum_future[,1]/147327.9))
 
 cat(" -- normalization ratios :", round(unlist(lapply(as.list(ls(pattern="Normalization")), get)),2),"\n")
-#
-# make some plots of historical (training) data vs. model predictions to demonstrate residual error
-#
+
+## make some plots of historical (training) data vs. model predictions to demonstrate residual error
+
 cat(" -- plotting...\n")
+
 require(reshape2)
 require(ggplot2)
 require(gridExtra)
 dev.new()
+
 # indicate : Year (Commodity Price + PDSI + Yield) in figure caption
 t_corn_plot <- data.frame(observed=m_corn_current$model$area*acresToKm*ratioToPilot*nass_cornNormalizationRatio,
                           predicted=m_corn_current$fit*acresToKm*ratioToPilot*nass_cornNormalizationRatio,
@@ -260,7 +264,19 @@ p4 <- ggplot(t_sorghum_plot) +
 
 grid.arrange(p1,p2,p3,p4)
 
-# make barplots of forecasts for 2015, 2020, 2025, with p=0.95 intervals for each crop
+## make barplots of forecasts for 2015, 2020, 2025, with p=0.95 intervals for each crop
+
+t_future <- ls(pattern="t_.*_future$")
+  t_future <- t_future[!grepl(t_future,pattern="price|pdsi")]
+
+t_future_plot <- data.frame(crop=NA,area=NA,se=NA,year=NA)
+
+for(t in t_future){
+  focal<-get(t)
+  if(grepl(focal,pattern="corn")){
+    rbind(t_future, data.frame(crop="corn",area=focal[focal$year == c(2015,2020,2025),]$area,se=focal[focal$year == c(2015,2020,2025),]$area-focal[focal$year == 2015,]$lower),year=c(2015,2020,2025))
+  }
+}
 
 p1 <- ggplot()
 
