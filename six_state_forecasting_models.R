@@ -211,7 +211,7 @@ p1 <- ggplot(t_corn_plot) +
       scale_x_continuous(breaks = round(seq(min(t_corn_plot$year,na.rm=T), max(t_corn_plot$year,na.rm=T), by = 5),1)) + 
       xlab("") + ylab(expression(paste('Area Planted (',km^{2},')'))) +
       annotate("text", y=max(t_corn_plot$observed,na.rm=T), x=min(t_corn_plot$year,na.rm=T)*1.0011, label = "A.) Corn", size=4) +
-      geom_abline(intercept = mean(t_corn$area*acresToKm*ratioToPilot*nass_cornNormalizationRatio), slope = 1, colour="red") +
+      geom_abline(intercept = mean(m_corn_current$model$area*acresToKm*ratioToPilot*nass_cornNormalizationRatio), slope = 1, colour="red") +
       theme_bw();
 
 t_cotton_plot <- data.frame(observed=m_cotton_current$model$area*acresToKm*ratioToPilot*nass_cottonNormalizationRatio,
@@ -225,7 +225,7 @@ p2 <- ggplot(t_cotton_plot) +
       scale_x_continuous(breaks = round(seq(min(t_cotton_plot$year,na.rm=T), max(t_cotton_plot$year,na.rm=T), by = 5),1)) + 
       xlab("") + ylab(expression(paste('Area Planted (',km^{2},')'))) +
       annotate("text", y=max(t_cotton_plot$observed,na.rm=T), x=max(t_cotton_plot$year,na.rm=T)*0.9982, label = "B.) Cotton", size=4) +
-      geom_abline(intercept = mean(t_cotton$area*acresToKm*ratioToPilot*nass_cottonNormalizationRatio), slope = 1, colour="red") +
+      geom_abline(intercept = mean(m_cotton_current$model$area*acresToKm*ratioToPilot*nass_cottonNormalizationRatio), slope = 1, colour="red") +
       theme_bw();
 
 t_wheat_plot <- data.frame(observed=m_wheat_current$model$area*acresToKm*ratioToPilot*nass_wheatNormalizationRatio,
