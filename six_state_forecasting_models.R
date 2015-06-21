@@ -43,11 +43,11 @@ HOME <- Sys.getenv("HOME")
 # parse full historical tables for our individual commodity crops.  Units here are tallied so they are consistent with the 6 states that make up the Great Plains.
 # We will project these forward to 2025 then scale the projected areas for each crop to the extent of the GPLCC pilot region as we work our way through the data.
 
-t         <- read.csv("data/NASS_Historical_Yield_Area_Corn_Cotton_Wheat_Sorghum_Six_States.csv")
+t         <- read.csv("data/NASS_Historical_Yield_Area_Corn_Cotton_Wheat_Sorghum_Six_States.csv") # Area planted here is in acres
 t_drought <- read.csv("data/NNDC_Drought_and_Climate_Central_US.csv") # Historical drought data compiled from Cook et al. and NOAA
 
 t_wheat    <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="WHEAT"),])
-  t_wheat_price <- read.csv("data/wheat_crop_yields_us.csv")
+  t_wheat_price <- read.csv("data/wheat_crop_yields_us.csv") # Area planted here is in acres
     t_wheat <- cbind(t_wheat,
                      price=t_wheat_price$Price[match(t_wheat$year,t_wheat_price$Year)],
                      parsePDSIByYear(t_drought, year=t_wheat$year))
@@ -70,7 +70,7 @@ t_sorghum  <- parseStateYieldsByYear(t[grepl(as.vector(t$Data.Item),pattern="SOR
                        price=t_sorghum_price$Price[match(t_sorghum$year,t_sorghum_price$Year)],
                        parsePDSIByYear(t_drought, year=t_sorghum$year))
 
-# build our raw "area harvested" models for the six states of the GP
+# build our raw "area planted" models for the six states of the GP
 summary(m_wheat_current <- glm(area~.,data=t_wheat))
 summary(m_corn_current <- glm(area~.,data=t_corn))
 summary(m_cotton_current <- glm(area~.,data=t_cotton))
@@ -127,12 +127,14 @@ t_pdsi_future <- read.csv("data/Cook_et_al_pdsi_projections_2100.csv") # time-se
 
 # predict the total area harvested for the GPLCC pilot region, using commodity prices, time, yield, and drought conditions
   
-#ratioToPilot <- (147327927594)/(1867211959388) # meters/meters ratio of the pilot project area to the six states tallied for NASS statistics representing the GP
+ratioToPilot <- (147327927594)/(1867211959388) # meters/meters ratio of the pilot project area to the six states tallied for NASS statistics representing the GP
+# acres/km2 = 0.0040468564224
+acresToKm <- 0.0040468564224
 
 t_corn_future <- cbind(yield=corn_bu_acre,corn_price_future,pdsi=t_pdsi_future)
   t_m <- predict(m_corn_current,newdata=t_corn_future,se.fit=T)
-    t_m$fit <- t_m$fit*ratioToPilot
-      t_m$se.fit <- t_m$se.fit*ratioToPilot
+    t_m$fit <- t_m$fit*acresToKm*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*acresToKm*ratioToPilot
   upr <- t_m$fit + (1.96 * t_m$se.fit)
   lwr <- t_m$fit - (1.96 * t_m$se.fit)
   fit <- t_m$fit
@@ -140,8 +142,8 @@ t_corn_future <- cbind(yield=corn_bu_acre,corn_price_future,pdsi=t_pdsi_future)
 
 t_wheat_future <- cbind(yield=wheat_bu_acre,wheat_price_future,pdsi=t_pdsi_future)
   t_m <- predict(m_wheat_current,newdata=t_wheat_future,se.fit=T)
-    t_m$fit <- t_m$fit*ratioToPilot
-      t_m$se.fit <- t_m$se.fit*ratioToPilot
+    t_m$fit <- t_m$fit*acresToKm*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*acresToKm*ratioToPilot
   upr <- t_m$fit + (1.96 * t_m$se.fit)
   lwr <- t_m$fit - (1.96 * t_m$se.fit)
   fit <- t_m$fit
@@ -149,8 +151,8 @@ t_wheat_future <- cbind(yield=wheat_bu_acre,wheat_price_future,pdsi=t_pdsi_futur
 
 t_cotton_future <- cbind(yield=cotton_lbs_acre,cotton_price_future,pdsi=t_pdsi_future)
   t_m <- predict(m_cotton_current,newdata=t_cotton_future,se.fit=T)
-    t_m$fit <- t_m$fit*ratioToPilot
-      t_m$se.fit <- t_m$se.fit*ratioToPilot
+    t_m$fit <- t_m$fit*acresToKm*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*acresToKm*ratioToPilot
   upr <- t_m$fit + (1.96 * t_m$se.fit)
   lwr <- t_m$fit - (1.96 * t_m$se.fit)
   fit <- t_m$fit
@@ -158,8 +160,8 @@ t_cotton_future <- cbind(yield=cotton_lbs_acre,cotton_price_future,pdsi=t_pdsi_f
 
 t_sorghum_future <- cbind(yield=sorghum_bu_acre,sorghum_price_future,pdsi=t_pdsi_future)
   t_m <- predict(m_sorghum_current,newdata=t_sorghum_future,se.fit=T)
-    t_m$fit <- t_m$fit*ratioToPilot
-      t_m$se.fit <- t_m$se.fit*ratioToPilot
+    t_m$fit <- t_m$fit*acresToKm*ratioToPilot
+      t_m$se.fit <- t_m$se.fit*acresToKm*ratioToPilot
   upr <- t_m$fit + (1.96 * t_m$se.fit)
   lwr <- t_m$fit - (1.96 * t_m$se.fit)
   fit <- t_m$fit
@@ -171,17 +173,14 @@ t_sorghum_future <- cbind(yield=sorghum_bu_acre,sorghum_price_future,pdsi=t_pdsi
 ## course-grain county-level predictions.
 ##
 
-# acres/km2 = 0.0040468564224
-acresToKm <- 0.0040468564224
-
 # first, convert our area units from acres -> kilometers^2 -- for scale, the total area of the GPLCC pilot region in km2 is 147327.9
-for(ts in ls(pattern="t_.*future$")){ 
-  if(sum(grepl(names(get(ts)),pattern="rea"))>0){ 
-    t <- get(ts); 
-    t[,!grepl(names(t),pattern="year")] <- t[,!grepl(names(t),pattern="year")] * acresToKm
-    assign(ts,value=t) 
-  }
-}
+# for(ts in ls(pattern="t_.*future$")){ 
+#   if(sum(grepl(names(get(ts)),pattern="rea"))>0){ 
+#     t <- get(ts); 
+#     t[,!grepl(names(t),pattern="year")] <- t[,!grepl(names(t),pattern="year")] * acresToKm
+#     assign(ts,value=t) 
+#   }
+# }
 
 # total percentage of pilot region forecasted for agricultural activity for focal crops
 cat(" -- total area of GPLCC pilot region dedicated to agricultural development (pre-normalization):",(t_sorghum_future[,1]+t_cotton_future[,1]+t_wheat_future[,1]+t_corn_future[,1])/147327.9),"\n")
@@ -201,57 +200,61 @@ require(ggplot2)
 require(gridExtra)
 
 # indicate : Year (Commodity Price + PDSI + Yield) in figure caption
-t_corn_plot <- data.frame(observed=t_corn$area*acresToKm*nass_cornNormalizationRatio,
-                          predicted=predict(m_corn_current, newdata=t_corn)*acresToKm*nass_cornNormalizationRatio,
-                          year=1960:2014)
+t_corn_plot <- data.frame(observed=m_corn_current$model$area*acresToKm*ratioToPilot*nass_cornNormalizationRatio,
+                          predicted=m_corn_current$fit*acresToKm*ratioToPilot*nass_cornNormalizationRatio,
+                          year=m_corn_current$model$year)
 p1 <- ggplot(t_corn_plot) + 
       geom_line(aes(y=observed, x=year), colour="black") + 
       geom_point(aes(y=observed, x=year), colour="black") + 
       geom_line(aes(y=predicted, x=year), colour="orange") + 
       geom_point(aes(y=predicted, x=year), colour="orange") +      
-      scale_x_continuous(breaks = round(seq(min(t_corn_plot$year,na.rm=T), max(t_corn_plot$year,na.rm=T), by = 4),1)) + 
-      xlab("") + ylab("Area Planted") +
+      scale_x_continuous(breaks = round(seq(min(t_corn_plot$year,na.rm=T), max(t_corn_plot$year,na.rm=T), by = 5),1)) + 
+      xlab("") + ylab(expression(paste('Area Planted (',km^{2},')'))) +
       annotate("text", y=max(t_corn_plot$observed,na.rm=T), x=min(t_corn_plot$year,na.rm=T)*1.0011, label = "A.) Corn", size=4) +
-      geom_abline(intercept = mean(t_corn$area*acresToKm*nass_cornNormalizationRatio), slope = 1, colour="red") +
+      geom_abline(intercept = mean(t_corn$area*acresToKm*ratioToPilot*nass_cornNormalizationRatio), slope = 1, colour="red") +
       theme_bw();
 
-t_cotton_plot <- data.frame(observed=t_cotton$area*acresToKm*nass_cottonNormalizationRatio,
-                          predicted=predict(m_cotton_current, newdata=t_cotton)*acresToKm*nass_cottonNormalizationRatio,
-                          year=1960:2014)
+t_cotton_plot <- data.frame(observed=m_cotton_current$model$area*acresToKm*ratioToPilot*nass_cottonNormalizationRatio,
+                            predicted=m_cotton_current$fit*acresToKm*ratioToPilot*nass_cottonNormalizationRatio,
+                            year=m_cotton_current$model$year)
 p2 <- ggplot(t_cotton_plot) + 
       geom_line(aes(y=observed, x=year), colour="black") + 
       geom_point(aes(y=observed, x=year), colour="black") + 
       geom_line(aes(y=predicted, x=year), colour="orange") + 
       geom_point(aes(y=predicted, x=year), colour="orange") +      
-      xlab("") + ylab("Area Planted") +
+      scale_x_continuous(breaks = round(seq(min(t_cotton_plot$year,na.rm=T), max(t_cotton_plot$year,na.rm=T), by = 5),1)) + 
+      xlab("") + ylab(expression(paste('Area Planted (',km^{2},')'))) +
       annotate("text", y=max(t_cotton_plot$observed,na.rm=T), x=max(t_cotton_plot$year,na.rm=T)*0.9982, label = "B.) Cotton", size=4) +
-      geom_abline(intercept = mean(t_cotton$area*acresToKm*nass_cottonNormalizationRatio), slope = 1, colour="red") +
+      geom_abline(intercept = mean(t_cotton$area*acresToKm*ratioToPilot*nass_cottonNormalizationRatio), slope = 1, colour="red") +
       theme_bw();
 
-t_wheat_plot <- data.frame(observed=t_wheat$area*acresToKm*nass_wheatNormalizationRatio,
-                          predicted=predict(m_wheat_current, newdata=t_wheat)*acresToKm*nass_wheatNormalizationRatio,
-                          year=1960:2014)
+t_wheat_plot <- data.frame(observed=m_wheat_current$model$area*acresToKm*ratioToPilot*nass_wheatNormalizationRatio,
+                           predicted=m_wheat_current$fit*acresToKm*ratioToPilot*nass_wheatNormalizationRatio,
+                           year=m_wheat_current$model$year)
 p3 <- ggplot(t_wheat_plot) + 
       geom_line(aes(y=observed, x=year), colour="black") + 
       geom_point(aes(y=observed, x=year), colour="black") + 
       geom_line(aes(y=predicted, x=year), colour="orange") + 
-      geom_point(aes(y=predicted, x=year), colour="orange") +      
-      xlab("") + ylab("Area Planted") +
+      geom_point(aes(y=predicted, x=year), colour="orange") +     
+      scale_x_continuous(breaks = round(seq(min(t_wheat_plot$year,na.rm=T), max(t_wheat_plot$year,na.rm=T), by = 5),1)) +  
+      xlab("") + ylab(expression(paste('Area Planted (',km^{2},')'))) +
       annotate("text", y=max(t_wheat_plot$observed,na.rm=T), x=min(t_wheat_plot$year,na.rm=T)*1.0014, label = "C.) Wheat", size=4) +
-      geom_abline(intercept = mean(t_wheat$area*acresToKm*nass_wheatNormalizationRatio), slope = 1, colour="red") +
+      geom_abline(intercept = mean(t_wheat$area*acresToKm*ratioToPilot*nass_wheatNormalizationRatio), slope = 1, colour="red") +
       theme_bw();
 
-t_sorghum_plot <- data.frame(observed=t_sorghum$area*acresToKm*nass_sorghumNormalizationRatio,
-                          predicted=predict(m_sorghum_current, newdata=t_wheat)*acresToKm*nass_sorghumNormalizationRatio,
-                          year=1960:2014)
+t_sorghum_plot <- data.frame(observed=m_sorghum_current$model$area*acresToKm*ratioToPilot*nass_sorghumNormalizationRatio,
+                          predicted=m_sorghum_current$fit*acresToKm*ratioToPilot*nass_sorghumNormalizationRatio,
+                          year=m_sorghum_current$model$year)
+
 p4 <- ggplot(t_sorghum_plot) + 
       geom_line(aes(y=observed, x=year), colour="black") + 
       geom_point(aes(y=observed, x=year), colour="black") + 
       geom_line(aes(y=predicted, x=year), colour="orange") + 
       geom_point(aes(y=predicted, x=year), colour="orange") +      
-      xlab("") + ylab("Area Planted") +
+      scale_x_continuous(breaks = round(seq(min(t_sorghum_plot$year,na.rm=T), max(t_sorghum_plot$year,na.rm=T), by = 5),1)) + 
+      xlab("") + ylab(expression(paste('Area Planted (',km^{2},')'))) +
       annotate("text", y=max(t_sorghum_plot$observed,na.rm=T), x=max(t_sorghum_plot$year,na.rm=T)*0.9980, label = "D.) Sorghum", size=4) +
-      geom_abline(intercept = mean(t_sorghum$area*acresToKm*nass_sorghumNormalizationRatio), slope = 1, colour="red") +
+      geom_abline(intercept = mean(t_sorghum$area*acresToKm*ratioToPilot*nass_sorghumNormalizationRatio), slope = 1, colour="red") +
       theme_bw();
 
 grid.arrange(p1,p2,p3,p4)
