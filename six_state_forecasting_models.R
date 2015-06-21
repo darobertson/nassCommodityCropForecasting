@@ -1,5 +1,5 @@
 #
-# NASS COMMODITY CROP PROJECTIONS FOR DRYLAND AGRICULTURAL PLANTS IN THE SOUTHERN GREAT PLAINS
+# NASS COMMODITY CROP PROJECTIONS FOR DRYLAND AGRICULTURE IN THE SOUTHERN GREAT PLAINS
 #
 # These regression models utilize long-term historical USDA survey data collected from the six states that make up the Southern Great Plains (New Mexico,
 # Texas, Oklahoma, Colorado, Kansas, and Nebraska) and forecast changes in total area planted for major crops (Corn, cotton, wheat, sorghum).  Total area harvested 
