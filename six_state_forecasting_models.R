@@ -94,7 +94,7 @@ t_corn_yield <- data.frame(six_states_yield=t_corn$yield[match(t_corn$year,t_cor
 t_cotton_yield <- data.frame(six_states_yield=t_cotton$yield[match(t_cotton$year,t_cotton_price$year)],
                              us_yield=t_cotton_price$yield[match(t_cotton$year,t_cotton_price$year)], 
                              year=t_cotton_price$year[match(t_cotton$year,t_cotton_price$year)])
-  q  <- glm(six_states_yield ~ .,data=t_cotton_yield)
+  m_cotton_yield_from_us <- glm(six_states_yield ~ .,data=t_cotton_yield)
 t_sorghum_yield <- data.frame(six_states_yield=t_sorghum$yield[match(t_sorghum$year,t_sorghum_price$year)],
                               us_yield=t_sorghum_price$yield[match(t_sorghum$year,t_sorghum_price$year)], 
                               year=t_sorghum_price$year[match(t_sorghum$year,t_sorghum_price$year)])
@@ -183,7 +183,7 @@ t_sorghum_future <- cbind(yield=sorghum_bu_acre,sorghum_price_future,pdsi=t_pdsi
 # }
 
 # total percentage of pilot region forecasted for agricultural activity for focal crops
-cat(" -- total area of GPLCC pilot region dedicated to agricultural development (pre-normalization):",(t_sorghum_future[,1]+t_cotton_future[,1]+t_wheat_future[,1]+t_corn_future[,1])/147327.9),"\n")
+cat(" -- total area of GPLCC pilot region dedicated to agricultural development (pre-normalization):",round((t_sorghum_future[,1]+t_cotton_future[,1]+t_wheat_future[,1]+t_corn_future[,1])/147327.9,3),"\n")
 
 # NASS scaling factors -- this ratio scaling is an adjustment of total area derived from NASS CDL remote sensing data from 2008-2013
 nass_wheatNormalizationRatio   <- (0.1259009/mean(t_wheat_future[,1]/147327.9)) # ratio: mean nass total area wheat GPLCC region [2008-2013] / calculated mean GPLCC region area ratio
@@ -191,14 +191,15 @@ nass_cornNormalizationRatio    <- (0.03355856/mean(t_corn_future[,1]/147327.9))
 nass_cottonNormalizationRatio  <- (0.1231231/mean(t_cotton_future[,1]/147327.9))
 nass_sorghumNormalizationRatio <- (0.01291291/mean(t_sorghum_future[,1]/147327.9))
 
+cat(" -- normalization ratios :", round(unlist(lapply(as.list(ls(pattern="Normalization")), get)),2),"\n")
 #
 # make some plots of historical (training) data vs. model predictions to demonstrate residual error
 #
-
+cat(" -- plotting...\n")
 require(reshape2)
 require(ggplot2)
 require(gridExtra)
-
+dev.new()
 # indicate : Year (Commodity Price + PDSI + Yield) in figure caption
 t_corn_plot <- data.frame(observed=m_corn_current$model$area*acresToKm*ratioToPilot*nass_cornNormalizationRatio,
                           predicted=m_corn_current$fit*acresToKm*ratioToPilot*nass_cornNormalizationRatio,
