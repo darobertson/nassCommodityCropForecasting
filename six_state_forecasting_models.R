@@ -204,7 +204,8 @@ cat(" -- plotting...\n")
 require(reshape2)
 require(ggplot2)
 require(gridExtra)
-dev.new()
+
+dev.new(width=10,height=6)
 
 # indicate : Year (Commodity Price + PDSI + Yield) in figure caption
 t_corn_plot <- data.frame(observed=m_corn_current$model$area*acresToKm*ratioToPilot*nass_cornNormalizationRatio,
@@ -264,24 +265,34 @@ p4 <- ggplot(t_sorghum_plot) +
       geom_abline(intercept = mean(t_sorghum$area*acresToKm*ratioToPilot*nass_sorghumNormalizationRatio), slope = 1, colour="red") +
       theme_bw();
 
-grid.arrange(p1,p2,p3,p4)
+grid.arrange(p1,p2,p3,p4);
 
 ## make barplots of forecasts for 2015, 2020, 2025, with p=0.95 intervals for each crop
 
 t_future <- ls(pattern="t_.*_future$")
   t_future <- t_future[!grepl(t_future,pattern="price|pdsi")]
 
-t_future_plot <- data.frame(crop=NA,area=NA,se=NA,year=NA)
+t_future_plot <- rbind(cbind(t_corn_future, crop="corn"),
+                       cbind(t_wheat_future, crop="wheat"),
+                       cbind(t_sorghum_future, crop="sorghum"),
+                       cbind(t_cotton_future, crop="cotton"))
+t_future_plot <- t_future_plot[t_future_plot$year %in% c(2015,2020,2025),]
 
-for(t in t_future){
-  focal<-get(t)
-  if(grepl(focal,pattern="corn")){
-    rbind(t_future, data.frame(crop="corn",area=focal[focal$year == c(2015,2020,2025),]$area,se=focal[focal$year == c(2015,2020,2025),]$area-focal[focal$year == 2015,]$lower),year=c(2015,2020,2025))
-  }
-}
+cbPalette <- c("#999999", "#E69F00", "#56B4E9", "#009E73", "#F0E442", "#0072B2", "#D55E00", "#CC79A7")
 
-p1 <- ggplot()
+dev.new(width=5, height=7)
 
+p1 <- ggplot(t_future_plot, aes(fill=factor(crop))) + 
+      geom_bar(aes(y=area, x=year),stat="identity",position=position_dodge(3.1),width=3) + 
+      geom_errorbar(aes(y=area, x=year, ymin=lower, ymax=upper), colour="black", alpha=0.5,width=0.1, position=position_dodge(3.1)) + 
+      geom_abline(intercept = -2020, slope = 1, colour="black") +
+      scale_fill_manual(values=cbPalette) + 
+      scale_x_continuous(breaks=c(2015,2020,2025)) + 
+      xlab("") + ylab(expression(paste("Area Planted (",km^{2},")"))) + 
+      coord_flip() + 
+      theme_light() + theme(legend.title=element_blank());
+
+grid.arrange(p1);
 
 
 
