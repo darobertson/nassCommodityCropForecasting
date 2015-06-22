@@ -39,7 +39,7 @@ for(year in c(2015,2020,2025)){ # World Bank projections scoped to 2025
   for(prob in c("upper","mid","lower")){
   	focal <- rep(1,get(ls(pattern=paste("CLUs.*_",prob,"$",sep=""))))
       focal <- c(focal,rep(0,nrow(s)-length(focal)))
-         t_data[,paste(year,"tilled",prob,sep="_")] <- focal
+         t_data[,paste(prob,year,sep="_")] <- focal
   }
 }
 # write predictions to shapefile
