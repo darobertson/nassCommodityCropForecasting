@@ -6,7 +6,7 @@ argv <- c("/Volumes/big_black/intermediates/CDL/", "/Users/ktaylora/PLJV/boundar
 zips <- list.files(argv[1],full.names=T,pattern="zip$")
 
 s <- strsplit(argv[2],split="/")
- layer <- strsplit(s[[length(s)]],split="[.]")[[length(s[[1]])-0]][1]
+ layer <- strsplit(s[[length(na.omit(s))]],split="[.]")[[length(s[[1]])-0]][1]
    path <- paste(s[[1]][1:(length(s[[1]])-1)],collapse="/")
      s <- readOGR(path,layer,verbose=F)
 
@@ -14,6 +14,7 @@ corn    <- list();
 cotton  <- list();
 wheat   <- list();
 sorghum <- list();
+other   <- list();
 
 years <- sort(na.omit(suppressWarnings(as.numeric(unlist(strsplit(list.files(argv[1],pattern="zip$"),split="_"))))))
 
@@ -27,13 +28,15 @@ for(z in zips){
   cat(" -- sampling raster surface: ")
   s <- sampleRandom(r,size=85000)
   # corn
-  corn[[length(corn)+1]] <- sum(s%in%c(1,12))/length(s); cat(".")
+  corn[[length(corn)+1]] <- sum(s%in%c(1,12))/length(na.omit(s)); cat(".")
   # cotton
-  cotton[[length(cotton)+1]] <- sum(s==2)/length(s); cat(".")
+  cotton[[length(cotton)+1]] <- sum(s==2)/length(na.omit(s)); cat(".")
   # wheat
-  wheat[[length(wheat)+1]] <- sum(s%in%21:27)/length(s); cat(".")
+  wheat[[length(wheat)+1]] <- sum(s%in%21:27)/length(na.omit(s)); cat(".")
   # sorghum
-  sorghum[[length(sorghum)+1]] <- sum(s==4)/length(s); cat(".\n")
+  sorghum[[length(sorghum)+1]] <- sum(s==4)/length(na.omit(s)); cat(".")
+  # other crops
+  other[[length(other)+1]] <- sum(s%in%c(5:6,28:38,41:44,52,53,57:59,61,205,241,246))/length(na.omit(s)); cat(".\n")
 }
 # write table to CWD
 cat(" -- parsing output table to:",paste(getwd(),"nass_crops_output.csv",sep="/"),"\n")
@@ -41,7 +44,8 @@ t<-data.frame(year=years,
 	       corn=unlist(corn), 
 	       cotton=unlist(cotton),
 	       wheat=unlist(wheat),
-	       sorghum=unlist(sorghum))
+	       sorghum=unlist(sorghum)
+         other=unlist(other))
 
 write.csv(t,"nass_crops_output.csv")
 
