@@ -269,8 +269,10 @@ grid.arrange(p1,p2,p3,p4);
 
 ## make barplots of forecasts for 2015, 2020, 2025, with p=0.95 intervals for each crop
 
-t_future <- ls(pattern="t_.*_future$")
-  t_future <- t_future[!grepl(t_future,pattern="price|pdsi")]
+t_corn_future[,1:3]    <- t_corn_future[,1:3]*nass_cornNormalizationRatio
+t_wheat_future[,1:3]   <- t_wheat_future[,1:3]*nass_wheatNormalizationRatio
+t_sorghum_future[,1:3] <- t_sorghum_future[,1:3]*nass_sorghumNormalizationRatio
+t_cotton_future[,1:3]  <- t_cotton_future[,1:3]*nass_cottonNormalizationRatio
 
 t_future_plot <- rbind(cbind(t_corn_future, crop="corn"),
                        cbind(t_wheat_future, crop="wheat"),
