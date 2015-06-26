@@ -2,7 +2,7 @@ require(raster)
 require(rgdal)
 require(snow)
 
-beginCluster()
+beginCluster(n=4)
 
 HOME <- Sys.getenv("HOME");
 cat(" -- reading raster data\n")
@@ -12,7 +12,7 @@ for(r in f){
   n <- names(r)
   cat(" -- processing:",n,"\n")
   r <- raster::subs(r,data.frame(from=c(32,0),to=c(-32,NA)))
-  r <- raster::merge(lc,r)
+  r <- raster::merge(lc,projectRaster(r,lc,progress='text'))
   r <- raster::subs(r,data.frame(from=c(-32,37,38,201,202,203,
                                         205,206,207,208,209,210,211,212),
                                  to=c(37,34,34,34,34,34,34,34,34,34,34,34,34,34)))
