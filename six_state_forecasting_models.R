@@ -14,7 +14,7 @@
 #
 # yield under future conditions is only provided by NASS at the scale of the continental US.  We normalize the difference between the US and the six states of the GP using
 # a simple regression of historical data of yield in the six states vs. yield in the US from 1960-2014.  This makes a strong assumption of linearity between crop yields and area
-# harvested between the Central US and the continental US as a whole (but a defensible one; in-review, 2015). Projections of total area harvested for each commodity crop 
+# harvested between the Central US and the continental US as a whole (but a defensible one; check residual error committed by regression for proof). Projections of total area harvested for each commodity crop 
 # are then normalized (post-hoc) to the extent of the GPLCC pilot region using 30m gridded total area observations for each crop taken from NASS. 
 #
 
