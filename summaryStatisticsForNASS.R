@@ -1,3 +1,9 @@
+#
+# SUMMARIZE NASS STATISTICS
+# Randomly sample a NASS crop raster and generate summary statistics table indicating precent cover of the landscape for each
+# commodity crop (corn, cotton, wheat, sorghum, other).
+#
+
 require(raster)
 require(rgdal)
 
